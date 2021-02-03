@@ -12,21 +12,49 @@ namespace ScadaTestProject
         static void Main(string[] args)
         {
             IEnumerable<BaseItem> items = new ItemRepository().GetAllItems();
-            foreach (var plannedStartGroup in items.OrderBy(t => t.PlannedStart).GroupBy(t => t.PlannedStart))
-            {
-                Console.WriteLine($"Planned Start: {plannedStartGroup.Key.ToShortDateString()}");
-                foreach (var plannedEndGroup in plannedStartGroup.OrderBy(t => t.PlannedEnd).GroupBy(t => t.PlannedEnd))
-                {
-                    Console.WriteLine($"\tPlanned End: {plannedEndGroup.Key.ToShortDateString()}");
-                    foreach (var nameGroupe in plannedEndGroup.OrderBy(t => t.Name).GroupBy(t => t.Name))
-                    {
-                        Console.WriteLine($"\t\tName: {nameGroupe.Key}");
-                        foreach (BaseItem item in nameGroupe)
-                            Console.WriteLine($"\t\t\tId: {item.Id}, Parent Id: {item.ParentId.ToString()}, Name: {item.Name}, Planned Start: {item.PlannedStart.ToShortDateString()}, Planned End {item.PlannedEnd.ToShortDateString()}");
-                    }
-                }
-            }
+
+            Console.WriteLine("Медиана свойств Completed: " + CalcMediana(items.Select(t => t.Completed).ToArray()));
+
+            IEnumerable<ItemId> itemsTree = CreateItemsTree(items);
+
             Console.ReadLine();
+        }
+
+
+
+        /// <summary>
+        /// Расчет медианы методом предварительной сортировки массива
+        /// </summary>
+        /// <param name="calculationData">Массив чисел для расчета</param>
+        /// <returns>Медиана массива данных</returns>
+        private static double CalcMediana(byte[] dataForCalculation)
+        {
+            var sortedData = dataForCalculation.ToList();
+            sortedData.Sort();
+
+            if (sortedData.Count % 2 == 1)      // Если количество значений не четное, берем значение среднего элемента
+                return sortedData[sortedData.Count / 2];
+            else                                // Иначе находим среднее между центральными эелементами массива
+                return (sortedData[sortedData.Count / 2] + sortedData[sortedData.Count / 2 - 1]) / 2d;
+        }
+
+        /// <summary>
+        /// Создание дерева данных
+        /// </summary>
+        /// <param name="items">Базовые элементы</param>
+        /// <returns>Коллекцию объектов ItemId</returns>
+        private static IEnumerable<ItemId> CreateItemsTree(IEnumerable<BaseItem> items)
+        {
+            return items.GroupBy(t => t.Id)
+                .Select(t => new ItemId(t.Key)
+                {
+                    Parents = t.GroupBy(z => z.ParentId)
+                    .Select(z => new Parent(z.Key.GetValueOrDefault())
+                    {
+                        Bases = z.OrderBy(x => new { x.PlannedStart, x.PlannedEnd, x.Name }) // Сортируем по ТЗ "должны быть отсортированы по item.PlannedStart, item.PlannedEnd, item.Name свойствам."
+                         .Select(x => new Base { Name = x.Name, Completed = x.Completed, PlannedEnd = x.PlannedEnd, PlannedStart = x.PlannedStart })
+                    })
+                });
         }
     }
 }
