@@ -8,13 +8,13 @@ namespace ScadaTestProject
 {
     public class Parent
     {
-        public Parent(int id)
+        public Parent(int? id)
         {
             Id = id;
             Bases = new List<Base>();
         }
 
-        public int Id { private set; get; }
+        public int? Id { private set; get; }
         public IEnumerable<Base> Bases { set; get; }
     }
 }

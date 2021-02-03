@@ -49,7 +49,7 @@ namespace ScadaTestProject
                 .Select(t => new ItemId(t.Key)
                 {
                     Parents = t.GroupBy(z => z.ParentId)
-                    .Select(z => new Parent(z.Key.GetValueOrDefault())
+                    .Select(z => new Parent(z.Key)
                     {
                         Bases = z.OrderBy(x => new { x.PlannedStart, x.PlannedEnd, x.Name }) // Сортируем по ТЗ "должны быть отсортированы по item.PlannedStart, item.PlannedEnd, item.Name свойствам."
                          .Select(x => new Base { Name = x.Name, Completed = x.Completed, PlannedEnd = x.PlannedEnd, PlannedStart = x.PlannedStart })
