@@ -1,6 +1,7 @@
 ﻿using CommonSwCandidateTest.Data;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,13 +14,62 @@ namespace ScadaTestProject
         {
             IEnumerable<BaseItem> items = new ItemRepository().GetAllItems();
 
-            Console.WriteLine("Медиана свойств Completed: " + CalcMediana(items.Select(t => t.Completed).ToArray()));
 
-            IEnumerable<ItemId> itemsTree = CreateItemsTree(items);
+            //Задание №1
+            Console.WriteLine("Медиана свойств Completed: " + CalcMediana(items.Select(t => t.Completed).ToArray()));
+            Console.WriteLine();
+
+
+            //Задание #2
+            IEnumerable<BaseItemVertex> trees = CreateGraph(items);
+
+            foreach (var tree in trees)
+                DisplayTree(tree);
 
             Console.ReadLine();
         }
 
+        private static void DisplayTree(BaseItemVertex vertex)
+        {
+            Console.WriteLine(vertex);
+            foreach (var childVertex in vertex.Childs)
+                DisplayTree(childVertex);
+        }
+
+
+        /// <summary>
+        /// Создаем граф с данными
+        /// </summary>
+        /// <param name="items">Исходные данные</param>
+        private static IEnumerable<BaseItemVertex> CreateGraph(IEnumerable<BaseItem> items)
+        {
+            List<BaseItemVertex> peaks = new List<BaseItemVertex>(); //Так как вершин может быть несколько, создаем коллекцию вершин
+
+            foreach (BaseItem item in items.Where(t => t.ParentId == null).OrderBy(t => t.Id)) //Записи у которых нет ParentId считаем вершиной нового дерева
+            {
+                BaseItemVertex treePeak = BaseItemVertex.VertexFromBase(item);
+                GetChildVertexs(treePeak, items); //Рекурсивно находим все ветки
+                peaks.Add(treePeak);
+            }
+            return peaks;
+        }
+
+        /// <summary>
+        /// Получаем из коллекции все ветки
+        /// </summary>
+        /// <param name="vertex">вершина</param>
+        /// <param name="items">Коллекция значений</param>
+        private static void GetChildVertexs(BaseItemVertex vertex, IEnumerable<BaseItem> items)
+        {
+            vertex.Childs = items
+                .Where(t => t.ParentId == vertex.Id)
+                .Select(t => BaseItemVertex.VertexFromBase(t))
+                .OrderBy(t => t.PlannedStart).ThenBy(t => t.PlannedEnd).ThenBy(t => t.Name)
+                .ToList();
+            if (vertex.Childs.Count > 0)
+                foreach (BaseItemVertex leaf in vertex.Childs)
+                    GetChildVertexs(leaf, items);
+        }
 
 
         /// <summary>
@@ -36,25 +86,6 @@ namespace ScadaTestProject
                 return sortedData[sortedData.Count / 2];
             else                                // Иначе находим среднее между центральными эелементами массива
                 return (sortedData[sortedData.Count / 2] + sortedData[sortedData.Count / 2 - 1]) / 2d;
-        }
-
-        /// <summary>
-        /// Создание дерева данных
-        /// </summary>
-        /// <param name="items">Базовые элементы</param>
-        /// <returns>Коллекцию объектов ItemId</returns>
-        private static IEnumerable<ItemId> CreateItemsTree(IEnumerable<BaseItem> items)
-        {
-            return items.GroupBy(t => t.Id)
-                .Select(t => new ItemId(t.Key)
-                {
-                    Parents = t.GroupBy(z => z.ParentId)
-                    .Select(z => new Parent(z.Key)
-                    {
-                        Bases = z.OrderBy(x => new { x.PlannedStart, x.PlannedEnd, x.Name }) // Сортируем по ТЗ "должны быть отсортированы по item.PlannedStart, item.PlannedEnd, item.Name свойствам."
-                         .Select(x => new Base { Name = x.Name, Completed = x.Completed, PlannedEnd = x.PlannedEnd, PlannedStart = x.PlannedStart })
-                    })
-                });
         }
     }
 }
